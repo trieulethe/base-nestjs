@@ -45,13 +45,14 @@ export class BaseCommonService {
     });
   }
 
-  async update(id: number, updateData) {
+  async update(id: number, updateData, transaction?: any) {
     const updateValue = _.omitBy(updateData, _.isNil);
     const result = await this._model.update(updateValue, {
       where: {
         id,
       },
       returning: true,
+      transaction,
     });
     if (result[0] === 1) {
       return result[1][0];
@@ -59,11 +60,12 @@ export class BaseCommonService {
     return result[0];
   }
 
-  remove(id: number) {
+  remove(id: number, transaction?: any) {
     return this._model.destroy({
       where: {
         id,
       },
+      transaction,
     });
   }
 }
