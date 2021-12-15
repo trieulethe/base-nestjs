@@ -39,10 +39,20 @@ export class BaseCommonService {
     return this._model.findAndCountAll(query);
   }
 
-  findOne(params: FindOne) {
+  findById(params: FindOne) {
     return this._model.findByPk(params.id, {
       include: params && params.relations ? params.relations : [],
     });
+  }
+
+  findOne(params: FindOne) {
+    const where = params && params.where ? params.where : {}; 
+    const include = params && params.relations ? params.relations : [];
+    const query = {
+      include: include,
+      where: where,
+    };
+    return this._model.findOne(query);
   }
 
   async update(id: number, updateData, transaction?: any) {
