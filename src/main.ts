@@ -18,7 +18,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
   app.setGlobalPrefix('api');
   app.enableCors();
-  
+
   const accessLogStream = rfs.createStream('access.log', {
     maxSize: '10M',
     size: '10M',

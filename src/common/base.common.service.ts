@@ -46,7 +46,7 @@ export class BaseCommonService {
   }
 
   findOne(params: FindOne) {
-    const where = params && params.where ? params.where : {}; 
+    const where = params && params.where ? params.where : {};
     const include = params && params.relations ? params.relations : [];
     const query = {
       include: include,

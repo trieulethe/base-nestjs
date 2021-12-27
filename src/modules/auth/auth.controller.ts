@@ -1,42 +1,59 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Body, Post, Get, Req, Session } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { LoginInfoDto } from './dto/login-info.dto';
+import { ForgotInfoDto } from './dto/forgot-info.dto';
+import { UpdateForgotPasswordDto } from './dto/update-forgot-password.dto';
+// import { NoAuth } from "../../decorators/no-auth.decorator";
+import { LogoutDto } from './dto/logout.dto';
+import { NoAuth } from './metadata.decorator';
+var svgCaptcha = require('svg-captcha');
 
-@Controller('auth')
+@ApiTags('auth')
+@Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private authService: AuthService) {}
 
-  @Post()
-  create(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.create(createAuthDto);
+  // @NoAuth()
+  @Post('login')
+  async login(@Body() loginInfoDto: LoginInfoDto) {
+    console.log('hello');
+    return this.authService.login(loginInfoDto);
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
+  // @NoAuth()
+  @Post('logout')
+  async logout(@Body() logout: LogoutDto) {
+    return this.authService.logout(logout.userId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
+  @NoAuth()
+  @Post('forgot')
+  async forgot(@Body() forgotInfoDto: ForgotInfoDto) {
+    return this.authService.forgotPassword(forgotInfoDto.username);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
+  @NoAuth()
+  @Post('update-forgot-password')
+  async updateForgotPassword(@Body() body: UpdateForgotPasswordDto) {
+    return this.authService.updateForgotPassword({
+      username: body.username,
+      forgotHash: body.forgotHash,
+      password: body.password,
+    });
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+  @NoAuth()
+  @Get('captcha')
+  async getCaptcha(@Session() session) {
+    const getCaptchaCount = Number(session.getCaptchaCount) || 0;
+    session.getCaptchaCount = getCaptchaCount + 1;
+    if (session.getCaptchaCount < 1000) {
+      const captcha = svgCaptcha.create();
+      session.lastCaptchaText = captcha.text;
+      return captcha;
+    } else {
+      throw 'captcha count error';
+    }
   }
 }

@@ -1,53 +1,198 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
-  Patch,
   Param,
+  Post,
+  Put,
   Delete,
   Query,
 } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+const bcrypt = require('bcrypt');
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { FindAllControllerDto } from 'src/common/base.common.dto';
-import { Op } from 'sequelize';
-
-@Controller('users')
+import { IdParamDTO } from 'src/shared/dto/util.dto';
+import { Auth, AuthInfo } from 'src/shared/helpers/auth.decorator';
+import { NoAuth } from 'src/decorators/no-auth.decorator';
+import { BaseHttpException } from '../../shared/helpers/exception';
+import { ROLE_MAP } from '../../shared/helpers/constant';
+import { validAdmin } from 'src/utils';
+@Controller()
+@ApiTags('Nhân viên')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private userService: UserService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
+  @Get('')
+  @ApiOperation({ description: 'Lấy danh sách user' })
+  async queryUsers(@Auth() auth: AuthInfo, @Query() query) {
+    validAdmin(auth.roleMemberCode);
+    console.log('query.isGroup: ', query.isGroup);
+    const { userId } = auth;
+    const userResult = await this.userService.queryUser({
+      page: Number(query.page) || 1,
+      pageSize: Number(query.pageSize) || 100,
+      roleIds: query.roleIds ? query.roleIds.split(',') : undefined,
+      roleMemberCode: query.roleMemberCode,
+      filterString: query.filterString,
+      isGroup: query.isGroup,
+    });
+    return userResult;
   }
 
-  @Get()
-  findAll(@Query() query: FindAllControllerDto) {
-    const { search } = query;
-    if (search) {
-      query['where'] = {
-        name: {
-          [Op.iLike]: search.trim(),
-        },
-      };
+  @Post()
+  @ApiOperation({ description: 'Tạo user' })
+  async createUser(@Auth() auth: AuthInfo, @Body() body) {
+    validAdmin(auth.roleMemberCode);
+    const { userId } = auth;
+    const username = body.username || body.phone;
+    const oldUser = await this.userService.readUserByUserName(username);
+    if (oldUser) {
+      throw BaseHttpException.AccountAlreadyExists;
     }
-    return this.userService.findAll(query);
+    const newUserData = {
+      name: body.name,
+      phone: body.phone,
+      username: username,
+      address: body.address,
+      email: body.email,
+      avatar: body.avatar,
+      createdById: userId,
+      roleId: body.roleId,
+      passwordHash: await bcrypt.hash(body.password, 5),
+      roleMemberCode: body.roleMemberCode,
+      bankName: body.bankName,
+      bankAccount: body.bankAccount,
+      priceDifference: body.priceDifference,
+      group: body.group,
+      warehouseId: body.warehouseId,
+      groupId: body.groupId,
+    };
+    const newUser = await this.userService.createUser(newUserData);
+    return newUser;
+  }
+
+  @NoAuth()
+  @Post('register')
+  @ApiOperation({ description: 'Khách hàng đăng ký' })
+  async register(@Body() body) {
+    const username = body.username || body.phone;
+    const oldUser = await this.userService.readUserByUserName(username);
+    if (oldUser) {
+      throw BaseHttpException.AccountAlreadyExists;
+    }
+    const newUserData = {
+      name: body.name,
+      phone: body.phone,
+      username: username,
+      address: body.address,
+      email: body.email,
+      avatar: body.avatar,
+      passwordHash: await bcrypt.hash(body.password, 5),
+      warehouseId: body.warehouseId,
+      groupId: body.groupId,
+    };
+    const newUser = await this.userService.createUser(newUserData);
+    return newUser;
+  }
+
+  @Put(':id/status')
+  @ApiOperation({ description: 'Cập nhật trạng thái tài khoản' })
+  async updateUserStatus(
+    @Auth() auth: AuthInfo,
+    @Param() params: IdParamDTO,
+    @Body() body,
+  ) {
+    validAdmin(auth.roleMemberCode);
+    const userId = Number(params.id);
+    const updateUserData = {
+      status: body.status,
+    };
+    const updateResult = await this.userService.updateUserInfo(
+      userId,
+      updateUserData,
+    );
+    return updateResult;
+  }
+
+  @Put(':id')
+  @ApiOperation({ description: 'Cập nhật thông tin user' })
+  async updateUser(
+    @Auth() auth: AuthInfo,
+    @Param() params: IdParamDTO,
+    @Body() body,
+  ) {
+    validAdmin(auth.roleMemberCode);
+    const userId = Number(params.id);
+    let username;
+    if (body.username || body.phone) {
+      username = body.username || body.phone;
+      const oldUser = await this.userService.readUserByUserName(username, {
+        notIds: [userId],
+      });
+      if (oldUser) {
+        throw BaseHttpException.AccountAlreadyExists;
+      }
+    }
+    const updateUserData = {
+      username: username,
+      name: body.name,
+      phone: body.phone,
+      address: body.address,
+      email: body.email,
+      avatar: body.avatar,
+      roleId: body.roleId,
+      passwordHash: body.password
+        ? await bcrypt.hash(body.password, 5)
+        : undefined,
+      roleMemberCode: body.roleMemberCode,
+      bankName: body.bankName,
+      bankAccount: body.bankAccount,
+      priceDifference: body.priceDifference,
+      group: body.group,
+      warehouseId: body.warehouseId,
+      groupId: body.groupId,
+    };
+    return await this.userService.updateUserInfo(userId, updateUserData);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne({ id: +id });
+  @ApiOperation({ description: 'Đọc thông tin chi tiết user' })
+  async readUser(@Auth() auth: AuthInfo, @Param() params: IdParamDTO) {
+    const userId = Number(params.id);
+    const readUser = await this.userService.readUserInfo(userId);
+    return {
+      ...readUser.dataValues,
+      perms: auth.perms,
+    };
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
+  @Get(':id/balance')
+  @ApiOperation({ description: 'Số dư của user' })
+  async getBalanceByUser(@Auth() auth: AuthInfo, @Param() params: IdParamDTO) {
+    const userId = Number(params.id);
+    return await this.userService.getBalanceByUser(userId);
   }
 
+  @Post('my-balance')
+  @ApiOperation({ description: 'Số dư của tôi' })
+  async getMyBalance(@Auth() auth: AuthInfo) {
+    return await this.userService.getBalanceByUser(auth.userId);
+  }
+
+  @Post('overview-balance')
+  @ApiOperation({ description: 'Số dư bộ khách hàng' })
+  async overViewBalance(@Auth() auth: AuthInfo, @Body() body: any) {
+    const { roleMemberCode } = auth;
+    if (![ROLE_MAP.ADMIN, ROLE_MAP.EMPLOYEE].includes(roleMemberCode)) {
+      throw BaseHttpException.PermissionDenied;
+    }
+    return await this.userService.overViewBalance(body);
+  }
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  @ApiOperation({ description: 'Xoá user' })
+  async deleteUser(@Auth() auth: AuthInfo, @Param() params: IdParamDTO) {
+    validAdmin(auth.roleMemberCode);
+    const userId = Number(params.id);
+    return this.userService.deleteUser(userId);
   }
 }
