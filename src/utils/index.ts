@@ -3,7 +3,8 @@ import * as _ from 'lodash';
 import { AuthInfo } from 'src/shared/helper/auth.decorator';
 import { ROLE_MAP } from 'src/shared/helper/constant';
 
-export function validAdmin(roleMemberCode) {
+export function validAdmin(auth: AuthInfo) {
+  const { roleMemberCode } = auth;
   if (roleMemberCode !== ROLE_MAP.ADMIN && roleMemberCode !== ROLE_MAP.EMPLOYEE)
     throw new NotAcceptableException(
       'Cannot access resource, you are not admin !',

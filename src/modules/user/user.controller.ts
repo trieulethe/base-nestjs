@@ -12,7 +12,6 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import * as bcrypt from 'bcrypt';
 import { Auth, AuthInfo } from 'src/shared/helper/auth.decorator';
 import { validAdmin } from 'src/utils';
-import { NoAuth } from '../auth/metadata.decorator';
 import { UserService } from './user.service';
 import { BaseHttpException } from 'src/shared/helper/exception';
 @Controller()
@@ -23,7 +22,7 @@ export class UserController {
   @Get()
   @ApiOperation({ description: 'Lấy danh sách user' })
   async queryUsers(@Auth() auth: AuthInfo, @Query() query) {
-    validAdmin(auth.roleMemberCode);
+    validAdmin(auth);
     const userResult = await this.userService.queryUser({
       page: Number(query.page) || 1,
       pageSize: Number(query.pageSize) || 100,
@@ -38,7 +37,7 @@ export class UserController {
   @Post()
   @ApiOperation({ description: 'Tạo user' })
   async createUser(@Auth() auth: AuthInfo, @Body() body) {
-    validAdmin(auth.roleMemberCode);
+    validAdmin(auth);
     const { userId } = auth;
     const username = body.username || body.phone;
     const oldUser = await this.userService.readUserByUserName(username);
@@ -70,7 +69,7 @@ export class UserController {
   @Put(':id/status')
   @ApiOperation({ description: 'Cập nhật trạng thái tài khoản' })
   async updateUserStatus(@Auth() auth: AuthInfo, @Param() id, @Body() body) {
-    validAdmin(auth.roleMemberCode);
+    validAdmin(auth);
     const userId = Number(+id);
     const updateUserData = {
       status: body.status,
@@ -85,7 +84,7 @@ export class UserController {
   @Put(':id')
   @ApiOperation({ description: 'Cập nhật thông tin user' })
   async updateUser(@Auth() auth: AuthInfo, @Param() id, @Body() body) {
-    validAdmin(auth.roleMemberCode);
+    validAdmin(auth);
     const userId = Number(+id);
     let username;
     if (body.username || body.phone) {
@@ -133,7 +132,7 @@ export class UserController {
   @Delete(':id')
   @ApiOperation({ description: 'Xoá user' })
   async deleteUser(@Auth() auth: AuthInfo, @Param() id: number) {
-    validAdmin(auth.roleMemberCode);
+    validAdmin(auth);
     const userId = Number(+id);
     return this.userService.deleteUser(userId);
   }

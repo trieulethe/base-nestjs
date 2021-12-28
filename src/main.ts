@@ -1,11 +1,11 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as morgan from 'morgan';
 import { AppModule } from './app.module';
+import * as rfs from 'rotating-file-stream';
 import { AllExceptionsFilter } from './middleware/exception/http.exception.filter';
 import { TransformInterceptor } from './middleware/interceptor/transform.interceptor';
-import * as morgan from 'morgan';
-import * as rfs from 'rotating-file-stream';
 import path = require('path');
 import { API_PORT } from './shared/helper/config';
 
