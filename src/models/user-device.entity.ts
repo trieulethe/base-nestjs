@@ -12,7 +12,7 @@ import {
   ForeignKey,
   BelongsTo,
 } from 'sequelize-typescript';
-import { UserModel } from '.';
+import { UserModel } from './user.entity';
 
 @Table({
   tableName: 'user_devices',

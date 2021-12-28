@@ -9,25 +9,21 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-const bcrypt = require('bcrypt');
-import { UserService } from './user.service';
-import { IdParamDTO } from 'src/shared/dto/util.dto';
-import { Auth, AuthInfo } from 'src/shared/helpers/auth.decorator';
-import { NoAuth } from 'src/decorators/no-auth.decorator';
-import { BaseHttpException } from '../../shared/helpers/exception';
-import { ROLE_MAP } from '../../shared/helpers/constant';
+import * as bcrypt from 'bcrypt';
+import { Auth, AuthInfo } from 'src/shared/helper/auth.decorator';
 import { validAdmin } from 'src/utils';
+import { NoAuth } from '../auth/metadata.decorator';
+import { UserService } from './user.service';
+import { BaseHttpException } from 'src/shared/helper/exception';
 @Controller()
 @ApiTags('Nhân viên')
 export class UserController {
   constructor(private userService: UserService) {}
 
-  @Get('')
+  @Get()
   @ApiOperation({ description: 'Lấy danh sách user' })
   async queryUsers(@Auth() auth: AuthInfo, @Query() query) {
     validAdmin(auth.roleMemberCode);
-    console.log('query.isGroup: ', query.isGroup);
-    const { userId } = auth;
     const userResult = await this.userService.queryUser({
       page: Number(query.page) || 1,
       pageSize: Number(query.pageSize) || 100,
@@ -71,39 +67,11 @@ export class UserController {
     return newUser;
   }
 
-  @NoAuth()
-  @Post('register')
-  @ApiOperation({ description: 'Khách hàng đăng ký' })
-  async register(@Body() body) {
-    const username = body.username || body.phone;
-    const oldUser = await this.userService.readUserByUserName(username);
-    if (oldUser) {
-      throw BaseHttpException.AccountAlreadyExists;
-    }
-    const newUserData = {
-      name: body.name,
-      phone: body.phone,
-      username: username,
-      address: body.address,
-      email: body.email,
-      avatar: body.avatar,
-      passwordHash: await bcrypt.hash(body.password, 5),
-      warehouseId: body.warehouseId,
-      groupId: body.groupId,
-    };
-    const newUser = await this.userService.createUser(newUserData);
-    return newUser;
-  }
-
   @Put(':id/status')
   @ApiOperation({ description: 'Cập nhật trạng thái tài khoản' })
-  async updateUserStatus(
-    @Auth() auth: AuthInfo,
-    @Param() params: IdParamDTO,
-    @Body() body,
-  ) {
+  async updateUserStatus(@Auth() auth: AuthInfo, @Param() id, @Body() body) {
     validAdmin(auth.roleMemberCode);
-    const userId = Number(params.id);
+    const userId = Number(+id);
     const updateUserData = {
       status: body.status,
     };
@@ -116,13 +84,9 @@ export class UserController {
 
   @Put(':id')
   @ApiOperation({ description: 'Cập nhật thông tin user' })
-  async updateUser(
-    @Auth() auth: AuthInfo,
-    @Param() params: IdParamDTO,
-    @Body() body,
-  ) {
+  async updateUser(@Auth() auth: AuthInfo, @Param() id, @Body() body) {
     validAdmin(auth.roleMemberCode);
-    const userId = Number(params.id);
+    const userId = Number(+id);
     let username;
     if (body.username || body.phone) {
       username = body.username || body.phone;
@@ -155,44 +119,22 @@ export class UserController {
     return await this.userService.updateUserInfo(userId, updateUserData);
   }
 
-  @Get(':id')
+  @Get('/:id')
   @ApiOperation({ description: 'Đọc thông tin chi tiết user' })
-  async readUser(@Auth() auth: AuthInfo, @Param() params: IdParamDTO) {
-    const userId = Number(params.id);
+  async readUser(@Auth() auth: AuthInfo, @Param() id: number) {
+    const userId = Number(+id);
     const readUser = await this.userService.readUserInfo(userId);
     return {
-      ...readUser.dataValues,
+      readUser,
       perms: auth.perms,
     };
   }
 
-  @Get(':id/balance')
-  @ApiOperation({ description: 'Số dư của user' })
-  async getBalanceByUser(@Auth() auth: AuthInfo, @Param() params: IdParamDTO) {
-    const userId = Number(params.id);
-    return await this.userService.getBalanceByUser(userId);
-  }
-
-  @Post('my-balance')
-  @ApiOperation({ description: 'Số dư của tôi' })
-  async getMyBalance(@Auth() auth: AuthInfo) {
-    return await this.userService.getBalanceByUser(auth.userId);
-  }
-
-  @Post('overview-balance')
-  @ApiOperation({ description: 'Số dư bộ khách hàng' })
-  async overViewBalance(@Auth() auth: AuthInfo, @Body() body: any) {
-    const { roleMemberCode } = auth;
-    if (![ROLE_MAP.ADMIN, ROLE_MAP.EMPLOYEE].includes(roleMemberCode)) {
-      throw BaseHttpException.PermissionDenied;
-    }
-    return await this.userService.overViewBalance(body);
-  }
   @Delete(':id')
   @ApiOperation({ description: 'Xoá user' })
-  async deleteUser(@Auth() auth: AuthInfo, @Param() params: IdParamDTO) {
+  async deleteUser(@Auth() auth: AuthInfo, @Param() id: number) {
     validAdmin(auth.roleMemberCode);
-    const userId = Number(params.id);
+    const userId = Number(+id);
     return this.userService.deleteUser(userId);
   }
 }

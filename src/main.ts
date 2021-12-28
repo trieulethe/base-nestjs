@@ -7,6 +7,7 @@ import { TransformInterceptor } from './middleware/interceptor/transform.interce
 import * as morgan from 'morgan';
 import * as rfs from 'rotating-file-stream';
 import path = require('path');
+import { API_PORT } from './shared/helper/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -23,7 +24,7 @@ async function bootstrap() {
     maxSize: '10M',
     size: '10M',
     interval: '1d', // rotate daily
-    path: path.join(process.cwd(), 'log'),
+    path: path.join(process.cwd(), 'logs'),
   });
   app.use(morgan('combined', { stream: accessLogStream }));
 
@@ -36,6 +37,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, options);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(3000);
+  await app.listen(API_PORT);
+  console.log('service listen on port', API_PORT);
 }
 bootstrap();

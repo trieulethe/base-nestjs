@@ -73,18 +73,18 @@ export class AuthService {
     const { username, password, token } = user;
     const userInfo = await this.validateUser(username, password);
     try {
+      const params: any = {
+        where: { userId: userInfo.id },
+        defaults: { token: token },
+      };
       if (token) {
-        await UserDeviceModel.findOrCreate({
-          where: { userId: userInfo.id },
-          defaults: { token: token },
-        });
+        await UserDeviceModel.findOrCreate(params);
       }
     } catch (error) {
       console.log('error when upsert token user', user);
     }
     console.log('userInfo', userInfo);
     const permission = await this._queryUserPermission(userInfo.id);
-    // console.log("permission", permission);
     const payload = {
       userId: userInfo.id,
       username: userInfo.username,

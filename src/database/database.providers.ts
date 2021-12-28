@@ -1,5 +1,5 @@
 import { Sequelize } from 'sequelize-typescript';
-import { UserModel } from 'src/model/user.entity';
+import { UserModel } from 'src/models/user.entity';
 import { DATABASE } from 'src/shared/helper/config';
 
 const models = [UserModel];

@@ -2,7 +2,7 @@ import { validate } from 'class-validator';
 import { v4 as uuidv4 } from 'uuid';
 
 export function zeroPad(num, places) {
-  var zero = places - num.toString().length + 1;
+  const zero = places - num.toString().length + 1;
   return Array(+(zero > 0 && zero)).join('0') + num;
 }
 
@@ -18,12 +18,9 @@ export function toJson(str: string) {
   return object;
 }
 
-export async function validator(
-  data: object,
-  Type: any,
-): Promise<{ valid: any; err: any }> {
+export async function validator(data, Type): Promise<{ valid: any; err: any }> {
   const valid = new Type();
-  for (let i in data) {
+  for (const i in data) {
     valid[i] = data[i];
   }
   const _err = await validate(valid);
@@ -35,25 +32,6 @@ export function generateTransactionId(prefix?: string): string {
   prefix = prefix || '';
   const transactionId = uuidv4();
   return `${prefix}${transactionId}`;
-}
-
-export function sortObject(o) {
-  var sorted = {},
-    key,
-    a = [];
-
-  for (key in o) {
-    if (o.hasOwnProperty(key)) {
-      a.push(key);
-    }
-  }
-
-  a.sort();
-
-  for (key = 0; key < a.length; key++) {
-    sorted[a[key]] = o[a[key]];
-  }
-  return sorted;
 }
 
 export function getSort(

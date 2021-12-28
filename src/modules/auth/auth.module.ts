@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { AUTH } from 'src/shared/helper/config';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AUTH } from 'src/shared/helper/config';
         expiresIn: AUTH.EXPIRED_IN,
       },
     }),
+    UserModule,
   ],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService, JwtStrategy],

@@ -1,32 +1,20 @@
-import { UserModel } from '../../entities/user.entity';
-import { StoreModel } from '../../entities/store.entity';
-
 import { Injectable } from '@nestjs/common';
 import * as _ from 'lodash';
-import { ROLE_DEFAULT_ID, USER_STATUS } from '../../shared/helpers/constant';
-import { WalletService } from '../wallet/wallet.service';
-import { Op, Sequelize } from 'sequelize';
-import { GroupModel } from 'src/entities';
+import { Op } from 'sequelize';
+import { UserModel } from 'src/models/user.entity';
+import { ROLE_DEFAULT_ID } from 'src/shared/helper/constant';
 
 @Injectable()
 export class UserService {
-  constructor(private walletService: WalletService) {}
-
   async readUserInfo(id: number) {
-    return UserModel.findByPk(id, {
-      include: [
-        {
-          model: StoreModel,
-        },
-      ],
-    });
+    return UserModel.findByPk(id, {});
   }
   async readUserByUserName(username: string, data?: any) {
-    let whereData: any = {
+    const whereData = {
       username: username,
     };
     if (data && data.notIds && data.notIds.length > 0) {
-      whereData.id = {
+      whereData['id'] = {
         [Op.notIn]: data.notIds,
       };
     }
@@ -42,66 +30,31 @@ export class UserService {
     const userIds = params.userIds;
     const roleMemberCode = params.roleMemberCode;
     const filterString = params.filterString;
-    const isGroup = params && params.isGroup ? Boolean(params.isGroup) : null;
 
-    let whereData: any = {};
+    const whereData = {};
     if (roleIds && roleIds.length > 0) {
-      whereData.roleId = roleIds;
+      whereData['roleId'] = roleIds;
     }
     if (userIds && userIds.length > 0) {
-      whereData.id = userIds;
+      whereData['id'] = userIds;
     }
     if (roleMemberCode && roleMemberCode.length > 0) {
-      whereData.roleMemberCode = roleMemberCode;
+      whereData['roleMemberCode'] = roleMemberCode;
     }
     if (filterString && filterString.length > 0) {
-      whereData.name = {
+      whereData['name'] = {
         [Op.iLike]: `%${filterString}%`,
       };
     }
-    if (isGroup === true) {
-      whereData.groupId = {
-        [Op.ne]: null,
-      };
-    }
-    if (isGroup === false) {
-      whereData.groupId = {
-        [Op.eq]: null,
-      };
-    }
-    const res = await UserModel.findAndCountAll({
+    const { rows, count } = await UserModel.findAndCountAll({
       where: whereData,
       order: [['id', 'DESC']],
-      include: [
-        {
-          model: GroupModel,
-        },
-      ],
       offset: offset,
       limit: limit,
     });
-    if (!res) {
-      return {
-        rows: [],
-        count: 0,
-      };
-    }
-    const rows = res.rows;
-    const count = res.count;
-    const userResIds: Array<number> = rows.map((row) => {
-      return row.id;
-    });
-    const wallets = await this.walletService.getBalance(userResIds);
-    const walletMapping = _.keyBy(wallets, 'user_id');
-    const userRes = rows.map((row) => {
-      return {
-        ...row.dataValues,
-        balance: walletMapping[row.id] ? walletMapping[row.id].balance : 0,
-      };
-    });
     return {
-      rows: userRes,
-      count: count,
+      rows,
+      count,
     };
   }
 
@@ -137,16 +90,5 @@ export class UserService {
     return UserModel.create(dataCreate, {
       transaction,
     });
-  }
-
-  async getBalanceByUser(userId: number) {
-    const resBalance = await this.walletService.getBalance([userId]);
-    if (!resBalance || resBalance.length <= 0) {
-      return 0;
-    }
-    return resBalance[0].balance;
-  }
-  async overViewBalance(data: any) {
-    return await this.walletService.overViewBalance(data);
   }
 }
